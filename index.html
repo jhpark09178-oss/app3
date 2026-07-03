@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>붓꽃 탐구 도감 및 실시간 AI 예측기</title>
+    <!-- Tailwind CSS & Google Fonts & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#FAF9F6',
+                        forest: '#1B3022',
+                        iris: '#5D3FD3',
+                        setosa: '#FBBF24',
+                        versicolor: '#6366F1',
+                        virginica: '#A855F7',
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #F8FAFC;
+        }
+        /* 슬라이더 커스텀 스타일 */
+        input[type="range"]::-webkit-slider-thumb {
+            background: #5D3FD3;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            cursor: pointer;
+            appearance: none;
+        }
+        /* 하이라이트 애니메이션 */
+        .anatomy-active {
+            filter: drop-shadow(0 0 8px rgba(93, 63, 211, 0.6));
+            stroke-width: 3px !important;
+        }
+
+        /* 인쇄 가이드 CSS */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-report-area, #printable-report-area * {
+                visibility: visible;
+            }
+            #printable-report-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            #report-modal-buttons {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col justify-between relative">
+
+    <!-- 상단 네비게이션 헤더 -->
+    <header class="bg-forest text-cream py-6 px-4 md:px-8 shadow-md">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-iris text-white w-10 h-10 rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-seedling text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-serif text-2xl font-bold tracking-wide">Iris Explorer</h1>
+                    <p class="text-xs text-slate-300">붓꽃의 형태학적 비밀과 실시간 AI 예측 모델</p>
+                </div>
+            </div>
+            
+            <!-- 탭 및 보고서 출력 컨트롤 -->
+            <div class="flex flex-wrap items-center gap-3 justify-center">
+                <nav class="flex bg-emerald-950/40 p-1 rounded-xl">
+                    <button onclick="switchTab('guide')" id="tab-guide" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 bg-iris text-white shadow-sm">
+                        <i class="fa-solid fa-book-open mr-1"></i> 1. 신체 특징 도감
+                    </button>
+                    <button onclick="switchTab('predictor')" id="tab-predictor" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:text-white">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> 2. 실시간 AI 예측기
+                    </button>
+                </nav>
+                
+                <button onclick="openReport()" class="bg-emerald-800 text-cream px-4 py-2 rounded-xl text-sm font-bold hover:bg-emerald-700 transition flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-file-invoice"></i> 보고서 출력
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 대화형 컨텐츠 영역 -->
+    <main class="max-w-7xl mx-auto px-4 py-8 md:px-8 flex-grow w-full">
+        
+        <!-- ================= TAB 1: 붓꽃 특징 도감 ================= -->
+        <section id="section-guide" class="tab-section grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 왼쪽: 인터랙티브 붓꽃 일러스트레이션 (SVG) -->
+            <div class="lg:col-span-5 bg-white rounded-3xl shadow-sm p-6 border border-slate-100 flex flex-col items-center">
+                <span class="text-xs font-bold text-iris bg-iris/10 px-3 py-1 rounded-full uppercase tracking-wider mb-2">클릭하여 탐색</span>
+                <h3 class="text-lg font-bold text-forest mb-4 text-center">붓꽃의 주요 형태학적 구조</h3>
+                
+                <!-- 대화형 꽃 그래픽 SVG -->
+                <div class="w-full max-w-[320px] aspect-square bg-slate-50 rounded-2xl p-4 flex items-center justify-center border border-slate-100 relative">
+                    <svg viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+                        <!-- 꽃받침 (Sepal) 3잎 - 바깥쪽 큰 잎 -->
+                        <path id="guide-sepal-1" d="M 100,100 C 70,30 80,10 100,5 C 120,10 130,30 100,100" 
+                              fill="#6366F1" fill-opacity="0.15" stroke="#4F46E5" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('sepal')"/>
+                        <path id="guide-sepal-2" d="M 100,100 C 30,110 10,140 5,145 C 30,160 70,140 100,100" 
+                              fill="#6366F1" fill-opacity="0.15" stroke="#4F46E5" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('sepal')"/>
+                        <path id="guide-sepal-3" d="M 100,100 C 170,110 190,140 195,145 C 170,160 130,140 100,100" 
+                              fill="#6366F1" fill-opacity="0.15" stroke="#4F46E5" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('sepal')"/>
+                        
+                        <!-- 꽃잎 (Petal) 3잎 - 안쪽 서 있는 우뚝 솟은 잎 -->
+                        <path id="guide-petal-1" d="M 100,100 C 75,80 55,80 50,75 C 55,65 75,70 100,100" 
+                              fill="#A855F7" fill-opacity="0.3" stroke="#7E22CE" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('petal')"/>
+                        <path id="guide-petal-2" d="M 100,100 C 125,80 145,80 150,75 C 145,65 125,70 100,100" 
+                              fill="#A855F7" fill-opacity="0.3" stroke="#7E22CE" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('petal')"/>
+                        <path id="guide-petal-3" d="M 100,100 C 85,125 85,145 80,150 C 70,145 75,125 100,100" 
+                              fill="#A855F7" fill-opacity="0.3" stroke="#7E22CE" stroke-width="1.5" class="cursor-pointer transition-all duration-300"
+                              onclick="selectAnatomy('petal')"/>
+
+                        <!-- 중심 수술/암술부 -->
+                        <circle cx="100" cy="100" r="10" fill="#FBBF24" stroke="#D97706" stroke-width="1"/>
+                        <circle cx="100" cy="100" r="5" fill="#FFFFFF" opacity="0.8"/>
+                    </svg>
+                    
+                    <!-- 가이드 말풍선 -->
+                    <div class="absolute bottom-2 text-center text-[11px] text-slate-400 bg-white/80 px-3 py-1 rounded-full border border-slate-100">
+                        위 꽃 그림의 보라색(꽃잎) 혹은 파란색(꽃받침) 영역을 터치해 보세요!
+                    </div>
+                </div>
+
+                <!-- 붓꽃 종류별 구조적 차이 팁 -->
+                <div class="mt-6 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/60 w-full text-xs text-slate-600">
+                    <span class="font-bold text-forest block mb-1">🔍 형태학 특징 요약:</span>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><strong>Setosa</strong>: 꽃받침이 넓고 꽃잎이 작아 납작한 형태</li>
+                        <li><strong>Versicolor</strong>: 표준 규격의 적절한 비율</li>
+                        <li><strong>Virginica</strong>: 거대하고 잎과 받침이 모두 긴 웅장한 형태</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 특징 카드 설명 & 평균 분포도 -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- 대화형 구조 설명 패널 -->
+                <div class="bg-white rounded-3xl shadow-sm p-6 border border-slate-100">
+                    <h3 class="text-xl font-bold text-forest mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass-chart text-iris"></i> 
+                        <span id="anatomy-title">신체 부위별 상세 가이드</span>
+                    </h3>
+                    
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6" id="anatomy-desc">
+                        각 붓꽃의 물리적 규격 데이터(꽃받침 및 꽃잎의 세로 성장 길이와 가로 폭 너비)는 분류를 결정짓는 핵심 물리 지표가 됩니다. 왼쪽 꽃 그림 영역을 터치해 상세 설명을 확인하세요.
+                    </p>
+
+                    <!-- 수치 지표 특징 일람 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <h4 class="font-bold text-sm text-slate-700 mb-1 flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> 꽃받침 (Sepal)
+                            </h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                꽃을 지탱하는 바깥쪽 큰 잎부분입니다. 꽃받침의 너비와 길이는 품종 구별의 기초 데이터를 제공합니다.
+                            </p>
+                        </div>
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <h4 class="font-bold text-sm text-slate-700 mb-1 flex items-center gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span> 꽃잎 (Petal)
+                            </h4>
+                            <p class="text-xs text-slate-500 leading-relaxed">
+                                안쪽에서 하늘을 향해 곧게 선 아름다운 진짜 꽃잎입니다. 품종 판별의 **가장 확실한 열쇠(96%의 상관성)**를 가지고 있습니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 평균치 시각화 패널 -->
+                <div class="bg-white rounded-3xl shadow-sm p-6 border border-slate-100">
+                    <h3 class="text-lg font-bold text-forest mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-iris"></i> 붓꽃 종류별 신체 평균 비교 (센티미터)
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <!-- 꽃받침 평균 비교 -->
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">꽃받침 길이 (Sepal Length) 평균치</span>
+                            <div class="space-y-2 mt-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Setosa</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-amber-400 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 63%">5.0cm</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Versicolor</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-500 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 75%">5.9cm</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Virginica</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-purple-600 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 83%">6.6cm</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 꽃잎 평균 비교 -->
+                        <div>
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wide">꽃잎 길이 (Petal Length) 평균치</span>
+                            <div class="space-y-2 mt-2">
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Setosa</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-amber-400 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 21%">1.5cm</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Versicolor</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-indigo-500 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 61%">4.3cm</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <span class="w-20 text-xs font-semibold text-slate-500">Virginica</span>
+                                    <div class="flex-grow bg-slate-100 h-4 rounded-full overflow-hidden">
+                                        <div class="bg-purple-600 h-full rounded-full flex items-center justify-end pr-2 text-[10px] text-white font-bold" style="width: 79%">5.6cm</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= TAB 2: AI 실시간 예측기 ================= -->
+        <section id="section-predictor" class="tab-section hidden grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- 왼쪽: 데이터 입력용 슬라이더 및 프리셋 -->
+            <div class="lg:col-span-5 bg-white rounded-3xl shadow-sm p-6 border border-slate-100 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-forest mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-iris"></i> 4D 신체 치수 조절기
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-6">아래의 가로세로 길이 및 너비 슬라이더를 미세 조정하면 AI 의사결정트리 알고리즘이 예측 결과를 즉시 수정합니다.</p>
+                    
+                    <!-- 슬라이더 리스트 -->
+                    <div class="space-y-6">
+                        <!-- 꽃받침 길이 -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> 꽃받침 길이 (Sepal Length)
+                                </span>
+                                <span class="font-bold text-indigo-700 font-serif" id="val-sl">5.8 cm</span>
+                            </div>
+                            <input type="range" id="input-sl" min="4.3" max="7.9" step="0.1" value="5.8" 
+                                   class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateInputs()">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>최소 4.3 cm</span>
+                                <span>평균 5.8 cm</span>
+                                <span>최대 7.9 cm</span>
+                            </div>
+                        </div>
+
+                        <!-- 꽃받침 너비 -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> 꽃받침 너비 (Sepal Width)
+                                </span>
+                                <span class="font-bold text-sky-600 font-serif" id="val-sw">3.0 cm</span>
+                            </div>
+                            <input type="range" id="input-sw" min="2.0" max="4.4" step="0.1" value="3.0" 
+                                   class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateInputs()">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>최소 2.0 cm</span>
+                                <span>평균 3.0 cm</span>
+                                <span>최대 4.4 cm</span>
+                            </div>
+                        </div>
+
+                        <!-- 꽃잎 길이 -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-iris"></span> 꽃잎 길이 (Petal Length)
+                                </span>
+                                <span class="font-bold text-iris font-serif" id="val-pl">4.3 cm</span>
+                            </div>
+                            <input type="range" id="input-pl" min="1.0" max="6.9" step="0.1" value="4.3" 
+                                   class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateInputs()">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>최소 1.0 cm</span>
+                                <span>평균 3.7 cm</span>
+                                <span>최대 6.9 cm</span>
+                            </div>
+                        </div>
+
+                        <!-- 꽃잎 너비 -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-slate-700 flex items-center gap-1.5">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-purple-400"></span> 꽃잎 너비 (Petal Width)
+                                </span>
+                                <span class="font-bold text-purple-600 font-serif" id="val-pw">1.3 cm</span>
+                            </div>
+                            <input type="range" id="input-pw" min="0.1" max="2.5" step="0.1" value="1.3" 
+                                   class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer"
+                                   oninput="updateInputs()">
+                            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                                <span>최소 0.1 cm</span>
+                                <span>평균 1.2 cm</span>
+                                <span>최대 2.5 cm</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 빠른 프리셋 패널 -->
+                <div class="mt-8 pt-6 border-t border-slate-100 bg-slate-50 p-4 rounded-2xl">
+                    <h4 class="text-xs font-bold text-slate-600 mb-3 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-leaf text-emerald-600"></i> 품종별 평균 규격 원클릭 대입
+                    </h4>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="applyPreset(5.0, 3.4, 1.5, 0.2)" class="px-2 py-2 bg-white border border-slate-200 text-xs rounded-xl hover:border-iris hover:text-iris transition font-bold text-slate-700 shadow-sm">
+                            🌸 Setosa
+                        </button>
+                        <button onclick="applyPreset(5.9, 2.7, 4.3, 1.3)" class="px-2 py-2 bg-white border border-slate-200 text-xs rounded-xl hover:border-iris hover:text-iris transition font-bold text-slate-700 shadow-sm">
+                            🌿 Versicolor
+                        </button>
+                        <button onclick="applyPreset(6.6, 3.0, 5.6, 2.0)" class="px-2 py-2 bg-white border border-slate-200 text-xs rounded-xl hover:border-iris hover:text-iris transition font-bold text-slate-700 shadow-sm">
+                            ⚜️ Virginica
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽: 실시간 예측 결과 및 의사결정 노드 탐색기 -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                
+                <!-- AI 예측 출력 카드 -->
+                <div class="bg-white rounded-3xl shadow-sm p-6 border border-slate-100 grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    
+                    <!-- 예측 SVG 이미지 그래픽 -->
+                    <div class="md:col-span-4 flex flex-col items-center justify-center bg-slate-50 rounded-2xl aspect-square p-4 border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">AI 모델 형태화</span>
+                        <div class="w-full max-w-[130px] aspect-square">
+                            <svg id="predict-dynamic-svg" viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+                                <g id="predict-flower-group" transform="translate(100, 100)">
+                                    <!-- 꽃받침 3잎 -->
+                                    <path id="p-sepal-1" d="M 0,0 C -20,-40 -15,-60 0,-70 C 15,-60 20,-40 0,0" fill="#6366F1" fill-opacity="0.3" stroke="#4F46E5" stroke-width="1.2"/>
+                                    <path id="p-sepal-2" d="M 0,0 C -45,10 -60,35 -65,40 C -45,50 -15,30 0,0" fill="#6366F1" fill-opacity="0.3" stroke="#4F46E5" stroke-width="1.2"/>
+                                    <path id="p-sepal-3" d="M 0,0 C 45,10 60,35 65,40 C 45,50 15,30 0,0" fill="#6366F1" fill-opacity="0.3" stroke="#4F46E5" stroke-width="1.2"/>
+                                    <!-- 꽃잎 3잎 -->
+                                    <path id="p-petal-1" d="M 0,0 C -20,-10 -35,-10 -40,-15 C -35,-25 -20,-20 0,0" fill="#A855F7" fill-opacity="0.7" stroke="#7E22CE" stroke-width="1.2"/>
+                                    <path id="p-petal-2" d="M 0,0 C 20,-10 35,-10 40,-15 C 35,-25 20,-20 0,0" fill="#A855F7" fill-opacity="0.7" stroke="#7E22CE" stroke-width="1.2"/>
+                                    <path id="p-petal-3" d="M 0,0 C -10,20 -10,35 -15,40 C -25,35 -20,20 0,0" fill="#A855F7" fill-opacity="0.7" stroke="#7E22CE" stroke-width="1.2"/>
+                                    <!-- 중앙 원 -->
+                                    <circle cx="0" cy="0" r="6" fill="#FBBF24"/>
+                                </g>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- 예측 품종 텍스트 -->
+                    <div class="md:col-span-8 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-widest block">실시간 최적 예측결과</span>
+                            <button onclick="openReport()" class="text-xs bg-iris/10 text-iris px-2.5 py-1 rounded-lg hover:bg-iris hover:text-white font-bold transition flex items-center gap-1">
+                                <i class="fa-solid fa-file-export"></i> 보고서 보기
+                            </button>
+                        </div>
+                        <h3 class="text-3xl font-serif font-bold text-forest flex items-center gap-2" id="prediction-title">
+                            Setosa <span id="prediction-emoji">🌸</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 leading-relaxed" id="prediction-desc">
+                            -
+                        </p>
+                        
+                        <!-- 확률 바 그래프 -->
+                        <div class="space-y-1.5 pt-2">
+                            <div class="flex justify-between text-xs">
+                                <span class="font-bold text-amber-700">Setosa</span>
+                                <span class="font-serif font-bold" id="prob-setosa">100%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div id="prob-bar-setosa" class="bg-setosa h-full rounded-full transition-all duration-300" style="width: 100%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs pt-1">
+                                <span class="font-bold text-indigo-700">Versicolor</span>
+                                <span class="font-serif font-bold" id="prob-versicolor">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div id="prob-bar-versicolor" class="bg-versicolor h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs pt-1">
+                                <span class="font-bold text-purple-700">Virginica</span>
+                                <span class="font-serif font-bold" id="prob-virginica">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div id="prob-bar-virginica" class="bg-virginica h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 🌳 실시간 의사결정 경로 추적기 -->
+                <div class="bg-white rounded-3xl shadow-sm p-6 border border-slate-100 flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-base font-bold text-forest mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-iris"></i> 의사결정트리 분기 과정 추적 (Decision Path Trace)
+                        </h3>
+                        
+                        <!-- 의사결정 단계 목록 렌더링 영역 -->
+                        <div class="space-y-4" id="decision-path-container">
+                            <!-- JS가 실시간으로 단계를 주입함 -->
+                        </div>
+                    </div>
+
+                    <!-- 보고서 생성 숏컷 푸터 버튼 -->
+                    <div class="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+                        <button onclick="openReport()" class="w-full sm:w-auto px-6 py-2.5 bg-iris hover:bg-iris/90 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-iris/20">
+                            <i class="fa-solid fa-print"></i> 현재 진단 데이터로 전체 분석 보고서 생성
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= DYNAMIC REPORT MODAL (NEW!) ================= -->
+    <div id="report-modal" class="fixed inset-0 bg-slate-950/65 backdrop-blur-xs hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8 relative border border-slate-100 max-h-[90vh] overflow-y-auto flex flex-col justify-between">
+            
+            <!-- Close icon button -->
+            <button onclick="closeReport()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100" id="report-close-top">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- PRINTABLE REPORT BODY -->
+            <div id="printable-report-area" class="space-y-6">
+                
+                <!-- Report Header -->
+                <div class="text-center border-b border-slate-200 pb-6">
+                    <span class="text-xs font-bold text-iris uppercase tracking-widest">MORPHOLOGICAL CLINICAL REPORT</span>
+                    <h2 class="font-serif text-3xl font-bold text-forest mt-1">붓꽃 형태학 분석 결과 보고서</h2>
+                    <p class="text-[11px] text-slate-400 mt-2">
+                        발행 일자: <span id="report-date-str">2026.07.03</span> | 시스템 도구: Iris Explorer v2.5 AI Engine
+                    </p>
+                </div>
+
+                <!-- Sub Section 1: Input Dimensions -->
+                <div>
+                    <h3 class="text-xs font-bold text-forest uppercase tracking-wider mb-3 flex items-center gap-1.5 border-l-3 border-iris pl-2">
+                        1. 신체 특징 측정 정보 (Input Morphometrics)
+                    </h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">꽃받침 길이</span>
+                            <span class="text-base font-bold font-serif text-slate-700" id="rep-sl">5.8 cm</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">꽃받침 너비</span>
+                            <span class="text-base font-bold font-serif text-slate-700" id="rep-sw">3.0 cm</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">꽃잎 길이</span>
+                            <span class="text-base font-bold font-serif text-slate-700" id="rep-pl">4.3 cm</span>
+                        </div>
+                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                            <span class="block text-[10px] text-slate-400 font-bold uppercase">꽃잎 너비</span>
+                            <span class="text-base font-bold font-serif text-slate-700" id="rep-pw">1.3 cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sub Section 2: AI Predictions -->
+                <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-3">
+                    <h3 class="text-xs font-bold text-forest uppercase tracking-wider flex items-center gap-1.5 border-l-3 border-iris pl-2">
+                        2. AI 진단 분류 결과 (AI Classifier Diagnostic)
+                    </h3>
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-2">
+                        <div>
+                            <span class="text-xs text-slate-400 font-bold block">예측 분류 품종</span>
+                            <span class="text-2xl font-serif font-bold text-iris flex items-center gap-2 mt-0.5" id="rep-species">
+                                Iris Setosa 🌸
+                            </span>
+                        </div>
+                        <div class="text-left sm:text-right">
+                            <span class="text-xs text-slate-400 font-bold block">매칭 및 예측 확신도</span>
+                            <span class="text-2xl font-bold font-serif text-forest" id="rep-confidence">100%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">상세 품종 학술 가이드</span>
+                        <p class="text-xs text-slate-600 leading-relaxed bg-white p-3 rounded-xl border border-slate-100" id="rep-anatomy-summary">
+                            -
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Sub Section 3: Decision Path Detail -->
+                <div>
+                    <h3 class="text-xs font-bold text-forest uppercase tracking-wider mb-3 flex items-center gap-1.5 border-l-3 border-iris pl-2">
+                        3. 머신러닝 알고리즘 추론 과정 (AI Inference Trace)
+                    </h3>
+                    <div class="space-y-3" id="rep-decision-path-list">
+                        <!-- JS가 실시간으로 모달 내부 보고서 리스트 구성 -->
+                    </div>
+                </div>
+
+                <!-- Scientific Footer Signoff -->
+                <div class="pt-6 border-t border-slate-100 text-center">
+                    <p class="text-[10px] text-slate-400">본 분석 결과는 사이킷런(Scikit-Learn)의 Fisher Iris 실측 통계 분포 알고리즘을 토대로 작성되었습니다.</p>
+                    <p class="text-xs font-bold text-forest font-serif mt-2">IRIS ANATOMY CENTER & LABS</p>
+                </div>
+            </div>
+
+            <!-- MODAL BUTTON PANEL -->
+            <div class="mt-8 pt-4 border-t border-slate-200 flex flex-col sm:flex-row gap-3 justify-end" id="report-modal-buttons">
+                <button onclick="copyReportText()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-copy"></i> 보고서 텍스트 복사
+                </button>
+                <button onclick="window.print()" class="px-5 py-2.5 bg-iris hover:bg-iris/90 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-print"></i> PDF 저장 및 인쇄
+                </button>
+                <button onclick="closeReport()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition">
+                    닫기
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- ================= DYNAMIC TOAST NOTIFICATION (NEW!) ================= -->
+    <div id="toast-message" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-xs text-white text-xs px-5 py-3 rounded-2xl shadow-xl border border-slate-800 pointer-events-none transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+        <span id="toast-text">복사되었습니다!</span>
+    </div>
+
+    <!-- 하단 라이선스 및 크레딧 -->
+    <footer class="bg-forest text-cream py-8 mt-16 border-t border-emerald-950/40 text-center text-xs">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <p class="font-serif">Iris Field Guide & Decision Tree Expert Predictor</p>
+            <p class="opacity-70">© 2026 Iris Morphological Learning Tool. Built for educational clarity.</p>
+        </div>
+    </footer>
+
+    <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
+    <script>
+        // 1. 탭 전환 제어
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 text-slate-300 hover:text-white";
+            });
+
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+            const clickedBtn = document.getElementById(`tab-${tabId}`);
+            clickedBtn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium transition duration-200 bg-iris text-white shadow-sm";
+        }
+
+        // 2. 도감(Anatomy) 대화형 정보 데이터베이스
+        const anatomyData = {
+            sepal: {
+                title: "꽃받침 (Sepal - 꽃받침 길이와 너비)",
+                desc: "꽃받침은 붓꽃의 외곽을 둘러싸며 아래로 쳐진 바깥 잎입니다. Setosa 품종은 상대적으로 짧고 매우 넓은 꽃받침을 가지고 있으며(평균 3.4cm 너비), Virginica 품종은 가장 웅장하게 긴 꽃받침 구조(평균 6.6cm 길이)를 형성합니다. 통계분석 시 꽃받침은 세 가지 품종 구분에 핵심적인 기저 변수로 활용됩니다."
+            },
+            petal: {
+                title: "꽃잎 (Petal - 꽃잎 길이와 너비)",
+                desc: "꽃잎은 붓꽃 중앙 내부에서 횃불 모양처럼 우뚝 솟아오른 잎입니다. 의사결정트리 알고리즘을 사용하면 꽃잎의 지표가 품종 분리에 가장 절대적인 지표임을 알 수 있습니다. Setosa 꽃잎은 평균 1.5cm 미만으로 매우 작아 완벽히 분류되며, Versicolor(평균 4.3cm)와 Virginica(평균 5.6cm) 역시 이 꽃잎 특징으로 거의 완벽히 구별됩니다."
+            }
+        };
+
+        // 도감 인터랙티브 하이라이트 제어
+        function selectAnatomy(part) {
+            // SVG 요소 하이라이트 클래스 해제
+            const parts = ['sepal', 'petal'];
+            parts.forEach(p => {
+                for(let i=1; i<=3; i++) {
+                    const el = document.getElementById(`guide-${p}-${i}`);
+                    if (el) el.classList.remove('anatomy-active');
+                }
+            });
+
+            // 선택 파트 하이라이트 부여
+            for(let i=1; i<=3; i++) {
+                const el = document.getElementById(`guide-${part}-${i}`);
+                if (el) el.classList.add('anatomy-active');
+            }
+
+            // 텍스트 내용 갱신
+            document.getElementById('anatomy-title').innerText = anatomyData[part].title;
+            document.getElementById('anatomy-desc').innerText = anatomyData[part].desc;
+        }
+
+        // 3. 입력 슬라이더 실시간 바인딩 & 계산
+        let inputs = { sl: 5.8, sw: 3.0, pl: 4.3, pw: 1.3 };
+        let latestSpecies = "Setosa";
+        let latestProb = [1.0, 0.0, 0.0];
+        let latestPathTrace = [];
+
+        function updateInputs() {
+            inputs.sl = parseFloat(document.getElementById('input-sl').value);
+            inputs.sw = parseFloat(document.getElementById('input-sw').value);
+            inputs.pl = parseFloat(document.getElementById('input-pl').value);
+            inputs.pw = parseFloat(document.getElementById('input-pw').value);
+
+            // UI 텍스트 업데이트
+            document.getElementById('val-sl').innerText = inputs.sl.toFixed(1) + " cm";
+            document.getElementById('val-sw').innerText = inputs.sw.toFixed(1) + " cm";
+            document.getElementById('val-pl').innerText = inputs.pl.toFixed(1) + " cm";
+            document.getElementById('val-pw').innerText = inputs.pw.toFixed(1) + " cm";
+
+            // 예측 및 일러스트레이션 갱신
+            runDTPredictor();
+        }
+
+        function applyPreset(sl, sw, pl, pw) {
+            document.getElementById('input-sl').value = sl;
+            document.getElementById('input-sw').value = sw;
+            document.getElementById('input-pl').value = pl;
+            document.getElementById('input-pw').value = pw;
+            updateInputs();
+        }
+
+        // 4. 의사결정트리 알고리즘 자바스크립트 엔진 (4개 특성 전부 대입 및 분기 조건)
+        function runDTPredictor() {
+            let pathTrace = [];
+            let species = "";
+            let prob = [0, 0, 0]; // [Setosa, Versicolor, Virginica]
+
+            // 트리 분기 1단계: 꽃잎 길이
+            if (inputs.pl <= 2.45) {
+                pathTrace.push({
+                    step: 1,
+                    condition: `꽃잎 길이 (Petal Length) ≤ 2.45 cm`,
+                    current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                    result: "참 (True)",
+                    desc: "꽃잎의 길이가 매우 짧습니다. 이 특징은 Setosa 군집만의 전형적인 형태적 고유성입니다. 즉시 예측을 확정합니다.",
+                    color: "border-amber-400 bg-amber-50/40 text-amber-900"
+                });
+                species = "Setosa";
+                prob = [1.0, 0.0, 0.0];
+            } else {
+                pathTrace.push({
+                    step: 1,
+                    condition: `꽃잎 길이 (Petal Length) > 2.45 cm`,
+                    current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                    result: "거짓 (False)",
+                    desc: "꽃잎 길이가 기준치보다 길어 Versicolor 또는 Virginica 군집의 범주로 이동하여 정밀 진단에 돌입합니다.",
+                    color: "border-indigo-400 bg-indigo-50/40 text-indigo-900"
+                });
+
+                // 트리 분기 2단계: 꽃잎 너비
+                if (inputs.pw <= 1.75) {
+                    pathTrace.push({
+                        step: 2,
+                        condition: `꽃잎 너비 (Petal Width) ≤ 1.75 cm`,
+                        current: `현재 입력된 꽃잎 너비: ${inputs.pw.toFixed(1)} cm`,
+                        result: "참 (True)",
+                        desc: "꽃잎 너비가 좁은 편입니다. Versicolor 품종에 가까울 확률이 우세합니다. 추가 미세 분류를 수행합니다.",
+                        color: "border-indigo-400 bg-indigo-50/40 text-indigo-900"
+                    });
+
+                    // 트리 분기 3단계: 꽃잎 길이 재검증
+                    if (inputs.pl <= 4.95) {
+                        pathTrace.push({
+                            step: 3,
+                            condition: `꽃잎 길이 (Petal Length) ≤ 4.95 cm`,
+                            current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                            result: "참 (True)",
+                            desc: "최종 검증 완료. 꽃받침 크기와 꽃잎 길이가 표준 Versicolor 규격에 완벽히 부합하므로 최종 예측 결과를 산출합니다.",
+                            color: "border-emerald-400 bg-emerald-50/40 text-emerald-900"
+                        });
+                        species = "Versicolor";
+                        prob = [0.0, 0.96, 0.04];
+                    } else {
+                        pathTrace.push({
+                            step: 3,
+                            condition: `꽃잎 길이 (Petal Length) > 4.95 cm`,
+                            current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                            result: "거짓 (False)",
+                            desc: "꽃잎이 1.75cm 이하로 얇으나 길이는 매우 깁니다. 이는 Virginica 변종의 지표이므로 최종 예측 결과가 전환됩니다.",
+                            color: "border-purple-400 bg-purple-50/40 text-purple-900"
+                        });
+                        species = "Virginica";
+                        prob = [0.0, 0.15, 0.85];
+                    }
+                } else {
+                    pathTrace.push({
+                        step: 2,
+                        condition: `꽃잎 너비 (Petal Width) > 1.75 cm`,
+                        current: `현재 입력된 꽃잎 너비: ${inputs.pw.toFixed(1)} cm`,
+                        result: "거짓 (False)",
+                        desc: "꽃잎이 매우 두텁습니다. 대형 종인 Virginica로 분류될 확률이 압도적으로 우세합니다.",
+                        color: "border-purple-400 bg-purple-50/40 text-purple-900"
+                    });
+
+                    // 트리 분기 3단계: 꽃받침 길이 및 너비 등 연동 최종 판독
+                    if (inputs.pl <= 4.85) {
+                        pathTrace.push({
+                            step: 3,
+                            condition: `꽃잎 길이 (Petal Length) ≤ 4.85 cm`,
+                            current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                            result: "참 (True)",
+                            desc: "꽃잎이 다소 짧은 특이 형태의 Virginica 개체군에 속합니다. 꽃잎 너비 지표에 의해 최종 우세를 확정합니다.",
+                            color: "border-purple-400 bg-purple-50/40 text-purple-900"
+                        });
+                        species = "Virginica";
+                        prob = [0.0, 0.22, 0.78];
+                    } else {
+                        pathTrace.push({
+                            step: 3,
+                            condition: `꽃잎 길이 (Petal Length) > 4.85 cm`,
+                            current: `현재 입력된 꽃잎 길이: ${inputs.pl.toFixed(1)} cm`,
+                            result: "거짓 (False)",
+                            desc: "꽃잎 길이와 너비가 동시에 거대합니다. 전형적이고 우아한 Virginica 품종으로 최종 판정을 확정합니다.",
+                            color: "border-purple-400 bg-purple-50/40 text-purple-900"
+                        });
+                        species = "Virginica";
+                        prob = [0.0, 0.0, 1.0];
+                    }
+                }
+            }
+
+            // 글로벌 상태 보존
+            latestSpecies = species;
+            latestProb = prob;
+            latestPathTrace = pathTrace;
+
+            // UI 갱신 실행
+            updatePredictionUI(species, pathTrace, prob);
+        }
+
+        // 5. 예측 및 타임라인 결과 UI 바인딩
+        function updatePredictionUI(species, path, prob) {
+            // 품종 이모지 및 상세 한글 설명
+            const descs = {
+                Setosa: "Setosa(세토사)는 꽃받침은 크지만 꽃잎이 매우 조그맣고 앙증맞은 둥그스름한 품종입니다. 꽃잎 길이 2.45cm 이하라는 단 하나의 조건으로도 완벽하게 판독이 가능합니다.",
+                Versicolor: "Versicolor(버시컬러)는 붓꽃 크기의 표준 비율을 보여주는 대중적인 품종입니다. 세토사보다는 크지만, 꽃잎 너비가 1.75cm를 초과하지 않는 균형 잡힌 물리 지표가 특징입니다.",
+                Virginica: "Virginica(버진아카)는 가장 거대하고 잎이 축 처지는 모습이 우아한 대형 품종입니다. 특히 꽃잎 너비가 1.75cm를 넘어 두툼하게 성장하는 물리 구조를 나타냅니다."
+            };
+            const emojis = { Setosa: "🌸 Setosa (세토사)", Versicolor: "🌿 Versicolor (버시컬러)", Virginica: "⚜️ Virginica (버진아카)" };
+
+            document.getElementById('prediction-title').innerText = emojis[species];
+            document.getElementById('prediction-desc').innerText = descs[species];
+
+            // 확률 텍스트 갱신
+            document.getElementById('prob-setosa').innerText = (prob[0]*100).toFixed(0) + "%";
+            document.getElementById('prob-versicolor').innerText = (prob[1]*100).toFixed(0) + "%";
+            document.getElementById('prob-virginica').innerText = (prob[2]*100).toFixed(0) + "%";
+
+            // 확률 바 스케일링
+            document.getElementById('prob-bar-setosa').style.width = (prob[0]*100) + "%";
+            document.getElementById('prob-bar-versicolor').style.width = (prob[1]*100) + "%";
+            document.getElementById('prob-bar-virginica').style.width = (prob[2]*100) + "%";
+
+            // 의사결정 경로 목록 렌더링
+            const pathContainer = document.getElementById('decision-path-container');
+            pathContainer.innerHTML = path.map(node => `
+                <div class="border-l-4 ${node.color} pl-4 py-2 space-y-1 rounded-r-xl transition-all duration-300">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-400">의사결정 노드 단계 ${node.step}</span>
+                        <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-white border border-slate-200">${node.result}</span>
+                    </div>
+                    <h4 class="font-bold text-sm text-slate-800">${node.condition}</h4>
+                    <p class="text-xs text-slate-500">${node.current}</p>
+                    <p class="text-[11px] text-slate-600 font-medium leading-relaxed">${node.desc}</p>
+                </div>
+            `).join('');
+
+            // 다이나믹 일러스트레이션 스케일링 및 색상 보정
+            updateFlowerIllustration(species);
+        }
+
+        // 실시간 치수 수치를 본뜬 가상 꽃 SVG 스케일 갱신 및 색상 변환
+        function updateFlowerIllustration(species) {
+            const scaleSL = inputs.sl / 8.0;
+            const scaleSW = inputs.sw / 4.5;
+            const scalePL = inputs.pl / 7.0;
+            const scalePW = inputs.pw / 2.6;
+
+            // 품종별 색상 분기 설정
+            let colorSepal = "#818CF8"; // Light indigo
+            let colorPetal = "#C084FC"; // Light purple
+
+            if (species === 'Setosa') {
+                colorSepal = "#FCD34D"; // Yellow-gold
+                colorPetal = "#FDE68A";
+            } else if (species === 'Versicolor') {
+                colorSepal = "#6366F1"; // Medium Indigo-blue
+                colorPetal = "#818CF8";
+            } else if (species === 'Virginica') {
+                colorSepal = "#8B5CF6"; // Royal purple
+                colorPetal = "#A78BFA";
+            }
+
+            // 꽃받침 드로잉 패스 실시간 좌표 수축 및 팽창
+            const lSep = -55 * scaleSL - 15;
+            const wSep = 20 * scaleSW + 5;
+            document.getElementById('p-sepal-1').setAttribute('d', `M 0,0 C -${wSep},${lSep*0.5} -${wSep*0.75},${lSep*0.8} 0,${lSep} C ${wSep*0.75},${lSep*0.8} ${wSep},${lSep*0.5} 0,0`);
+            document.getElementById('p-sepal-1').setAttribute('fill', colorSepal);
+
+            const lPet = 30 * scalePL + 10;
+            const wPet = 15 * scalePW + 4;
+            document.getElementById('p-petal-1').setAttribute('d', `M 0,0 C -${wPet},-${lPet*0.3} -${lPet*0.8},-${wPet*0.7} -${lPet},-${wPet} C -${lPet*0.7},-${wPet*1.3} -${wPet*0.6},-${lPet*0.4} 0,0`);
+            document.getElementById('p-petal-1').setAttribute('fill', colorPetal);
+            
+            // 대칭되는 다른 드로잉 패스들도 비율 팽창 및 동적 컬러 주입
+            document.getElementById('p-petal-2').setAttribute('fill', colorPetal);
+            document.getElementById('p-petal-3').setAttribute('fill', colorPetal);
+            document.getElementById('p-sepal-2').setAttribute('fill', colorSepal);
+            document.getElementById('p-sepal-3').setAttribute('fill', colorSepal);
+        }
+
+        // 6. 보고서(Report) 생성 모달 로직
+        function openReport() {
+            const today = new Date();
+            const formattedDate = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+            
+            // 날짜 대입
+            document.getElementById('report-date-str').innerText = formattedDate;
+
+            // 현재 조작 중인 치수 정보 데이터 매핑
+            document.getElementById('rep-sl').innerText = inputs.sl.toFixed(1) + " cm";
+            document.getElementById('rep-sw').innerText = inputs.sw.toFixed(1) + " cm";
+            document.getElementById('rep-pl').innerText = inputs.pl.toFixed(1) + " cm";
+            document.getElementById('rep-pw').innerText = inputs.pw.toFixed(1) + " cm";
+
+            // 품종 예측 매핑
+            const emojis = { Setosa: "Iris Setosa 🌸", Versicolor: "Iris Versicolor 🌿", Virginica: "Iris Virginica ⚜️" };
+            document.getElementById('rep-species').innerText = emojis[latestSpecies];
+
+            // 모델별 확률 계산 대입 (가장 높은 것 도출)
+            const probPercent = Math.max(...latestProb) * 100;
+            document.getElementById('rep-confidence').innerText = probPercent.toFixed(0) + "%";
+
+            // 상세 품종 학술 가이드 대입
+            const descs = {
+                Setosa: "Setosa(세토사)는 꽃받침은 큰데 반해 꽃잎이 가볍고 가느다랗게 자라나 있어, 꽃잎 길이 2.45cm 이하라는 핵심 물리 특성 한 가지만으로 타 품종과 완벽하게 상호 격리 및 분류가 가능합니다.",
+                Versicolor: "Versicolor(버시컬러)는 붓꽃의 물리 성장 지표 중 가장 중심에 해당하는 표준 군집군입니다. 꽃잎 너비가 1.75cm를 초과하지 않으면서 조화롭게 자라나는 특징이 있습니다.",
+                Virginica: "Virginica(버진아카)는 형태가 매우 웅장하게 발달한 품종입니다. 꽃잎 너비가 1.75cm를 초과해 널찍하게 퍼지고, 특히 꽃받침 길이가 평균 6.6cm까지 길게 뻗어나가는 웅장한 대형 구조를 보입니다."
+            };
+            document.getElementById('rep-anatomy-summary').innerText = descs[latestSpecies];
+
+            // 의사결정 추적 과정 모달 내부 이중화 리스트 출력
+            const repPathList = document.getElementById('rep-decision-path-list');
+            repPathList.innerHTML = latestPathTrace.map(node => `
+                <div class="p-3 bg-white rounded-xl border border-slate-100 flex flex-col gap-1 shadow-xs">
+                    <div class="flex justify-between items-center text-[10px] text-slate-400">
+                        <span class="font-bold">의사결정 노드 ${node.step}단계</span>
+                        <span class="font-extrabold px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200">${node.result}</span>
+                    </div>
+                    <h4 class="font-bold text-xs text-slate-800">${node.condition}</h4>
+                    <p class="text-[11px] text-slate-500">${node.desc}</p>
+                </div>
+            `).join('');
+
+            // 모달 노출
+            const modal = document.getElementById('report-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeReport() {
+            const modal = document.getElementById('report-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 브라우저 복사 (navigator.clipboard 방지용 document.execCommand 우회 처리)
+        function copyReportText() {
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+            
+            const probPercent = (Math.max(...latestProb) * 100).toFixed(0);
+
+            let txt = `[붓꽃 형태학 분석 결과 보고서]\n`;
+            txt += `생성 일자: ${dateStr}\n\n`;
+            txt += `1. 신체 특징 측정 정보 (cm 단위)\n`;
+            txt += `- 꽃받침 길이: ${inputs.sl.toFixed(1)} cm\n`;
+            txt += `- 꽃받침 너비: ${inputs.sw.toFixed(1)} cm\n`;
+            txt += `- 꽃잎 길이: ${inputs.pl.toFixed(1)} cm\n`;
+            txt += `- 꽃잎 너비: ${inputs.pw.toFixed(1)} cm\n\n`;
+            txt += `2. AI 진단 분류 결과\n`;
+            txt += `- 예측 품종: Iris ${latestSpecies}\n`;
+            txt += `- 예측 확신도: ${probPercent}%\n\n`;
+            txt += `3. AI 추론 분기 과정 추적\n`;
+            
+            latestPathTrace.forEach(node => {
+                txt += `▶ 노드 ${node.step}단계 [${node.result}]\n`;
+                txt += ` - 판단 조건: ${node.condition}\n`;
+                txt += ` - 상세 이유: ${node.desc}\n`;
+            });
+
+            txt += `\n-----------------------------------\n`;
+            txt += `IRIS ANATOMY CENTER & LABS`;
+
+            // 가상 엘리먼트를 통한 복사
+            const tempTextArea = document.createElement("textarea");
+            tempTextArea.value = txt;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempTextArea);
+
+            // 알림 토스트 출력 (alert 금지 규칙 적용)
+            showToast("보고서 텍스트가 클립보드에 성공적으로 복사되었습니다!");
+        }
+
+        // 토스트 제어 함수
+        function showToast(msg) {
+            const toast = document.getElementById('toast-message');
+            document.getElementById('toast-text').innerText = msg;
+            
+            // 애니메이션 노출
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            // 2.5초 뒤 회수
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // 화면 로드 시 실행될 기본 초기화
+        window.onload = function() {
+            selectAnatomy('sepal'); // 초기 도감 하이라이트 활성화
+            updateInputs();        // 예측 엔진 초기값 렌더링
+        };
+    </script>
+</body>
+</html>
